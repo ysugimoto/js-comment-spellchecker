@@ -1,6 +1,6 @@
 import sys
 import re
-import os.path
+import os
 import glob
 from functools import reduce
 
@@ -32,10 +32,12 @@ class SpellChecker:
     def __init__(self):
         self.checker = enchant.Dict('en_US')
 
-    def check(self, comments):
+    # Check words
+    def check(self, comments, whiteList):
         suggestList = []
 
         for words in comments:
+            words = filter(lambda w:w not in whiteList, words)
             for word in words:
                 if self.checker.check(word):
                     continue
@@ -46,6 +48,18 @@ class SpellChecker:
                     })
 
         return suggestList
+
+def get_white_list_words():
+    whiteListWords = []
+    rcFile = os.environ['HOME'] + '/.jcsrc'
+    if os.path.exists(rcFile) == False:
+        return whiteListWords
+
+    fp = open(rcFile, 'r')
+    whiteListWords.append(fp.readline(64).strip('\r\n'))
+    fp.close()
+
+    return whiteListWords
 
 # Glob file list
 def file_list(base):
@@ -67,11 +81,14 @@ if __name__ == '__main__':
 
     fileList = file_list(argv[1])
 
+    if fileList == None:
+        sys.exit('%s is invalid or not found' % argv[1])
+
     for f in fileList:
       jsc = JavaScriptCommentParser()
       comments = jsc.parseFile(f)
       sc = SpellChecker()
-      result = sc.check(comments)
+      result = sc.check(comments, get_white_list_words())
 
       if len(result) == 0:
           continue
