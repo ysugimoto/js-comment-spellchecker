@@ -20,8 +20,13 @@ class JavaScriptCommentParser:
     # Parse comment list from string
     def parseComment(self, content):
         comments = []
+        if content == '':
+            return comments
+
         for match in pyparsing.javaStyleComment.scanString(content):
-            words = re.findall('[a-zA-Z]+', match[0][0])
+            words = re.findall('[@a-zA-Z\']+', match[0][0])
+            words = filter(lambda w:w[0] != '@', words)
+            words = map(lambda w:w.strip('\''), words)
             comments.append(words)
 
         return comments
@@ -39,6 +44,8 @@ class SpellChecker:
         for words in comments:
             words = filter(lambda w:w not in whiteList, words)
             for word in words:
+                if word == '':
+                    continue
                 if self.checker.check(word):
                     continue
 
@@ -56,7 +63,9 @@ def get_white_list_words():
         return whiteListWords
 
     fp = open(rcFile, 'r')
-    whiteListWords.append(fp.readline(64).strip('\r\n'))
+    words = fp.readlines()
+    for w in words:
+        whiteListWords.append(w.strip('\r\n'))
     fp.close()
 
     return whiteListWords
@@ -74,21 +83,21 @@ def file_list(base):
 
 if __name__ == '__main__':
     argv = sys.argv
-    if len(argv) < 2:
-        sys.exit('Target file must supplied')
-
-    print('Finding target files')
-
-    fileList = file_list(argv[1])
+    if (len(argv) < 2):
+        fileList = file_list('./')
+    else:
+        fileList = file_list(argv[1])
 
     if fileList == None:
         sys.exit('%s is invalid or not found' % argv[1])
+
+    whiteListWords = get_white_list_words()
 
     for f in fileList:
       jsc = JavaScriptCommentParser()
       comments = jsc.parseFile(f)
       sc = SpellChecker()
-      result = sc.check(comments, get_white_list_words())
+      result = sc.check(comments, whiteListWords)
 
       if len(result) == 0:
           continue
@@ -103,7 +112,3 @@ if __name__ == '__main__':
       print('')
       print('===========================')
       print('')
-
-
-
-
